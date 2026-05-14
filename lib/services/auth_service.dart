@@ -85,10 +85,11 @@ class AuthService {
       final user = AuthUser.fromJson(data['user'] as Map<String, dynamic>);
       return AuthSession(token: token, user: user);
     } on ApiException catch (error) {
-      if (error.statusCode == 401) {
+      final isUnauthorized = error.statusCode == 401;
+      if (isUnauthorized) {
         await clearSession();
       }
-      throw AuthException(error.message, sessionExpired: error.statusCode == 401);
+      throw AuthException(error.message, sessionExpired: isUnauthorized);
     }
   }
 

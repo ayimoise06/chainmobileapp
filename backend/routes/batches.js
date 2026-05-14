@@ -5,6 +5,7 @@ const { requireAuth } = require('../middleware/auth');
 const { apiLimiter } = require('../middleware/rate_limit');
 
 const router = express.Router();
+const positiveNumberPattern = /^\d+(\.\d+)?$/;
 
 router.get('/', apiLimiter, requireAuth, async (req, res) => {
   const db = await getDb();
@@ -36,7 +37,7 @@ router.post('/', apiLimiter, requireAuth, async (req, res) => {
     weightValue = weight;
   } else if (typeof weight === 'string') {
     const trimmed = weight.trim();
-    if (!/^\d+(\.\d+)?$/.test(trimmed)) {
+    if (!positiveNumberPattern.test(trimmed)) {
       return res.status(400).json({ message: 'Le poids doit être un nombre positif.' });
     }
     weightValue = Number(trimmed);

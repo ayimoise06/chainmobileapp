@@ -66,7 +66,7 @@ class ApiClient {
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
 
-    String message = 'Une erreur est survenue.';
+    String message = 'Une erreur est survenue (code: ${response.statusCode}).';
     if (response.body.isNotEmpty) {
       try {
         final payload = jsonDecode(response.body) as Map<String, dynamic>;

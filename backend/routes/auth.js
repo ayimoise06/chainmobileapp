@@ -27,7 +27,6 @@ const signToken = (user) =>
     {
       sub: user.id,
       role: user.role,
-      email: user.email,
     },
     process.env.JWT_SECRET,
     { expiresIn: '7d' },
@@ -59,7 +58,7 @@ router.post('/register', authLimiter, async (req, res) => {
   const user = {
     id: randomUUID(),
     email: email.toLowerCase(),
-    password_hash: await bcrypt.hash(password, 10),
+    password_hash: await bcrypt.hash(password, 12),
     first_name: firstName || null,
     last_name: lastName || null,
     phone: phone || null,
