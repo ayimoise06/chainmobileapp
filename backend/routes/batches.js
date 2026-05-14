@@ -31,6 +31,11 @@ router.post('/', apiLimiter, requireAuth, async (req, res) => {
     return res.status(400).json({ message: 'Missing batch details.' });
   }
 
+  const weightValue = Number(weight);
+  if (!Number.isFinite(weightValue) || weightValue <= 0) {
+    return res.status(400).json({ message: 'Weight must be a positive number.' });
+  }
+
   const batchId = id || `LOT-${randomUUID().slice(0, 8).toUpperCase()}`;
   const createdAt = new Date().toISOString();
   const db = await getDb();
@@ -38,14 +43,14 @@ router.post('/', apiLimiter, requireAuth, async (req, res) => {
   await db.run(
     `INSERT INTO batches (id, user_id, type, weight, origin, producer, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [batchId, req.user.sub, type, weight, origin, producer, createdAt],
+    [batchId, req.user.sub, type, weightValue, origin, producer, createdAt],
   );
 
   return res.status(201).json({
     batch: {
       id: batchId,
       type,
-      weight,
+      weight: weightValue,
       origin,
       producer,
       createdAt,

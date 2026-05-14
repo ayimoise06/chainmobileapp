@@ -988,50 +988,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       ],
     );
   }
-
-  Future<void> _submitLogin() async {
-    final authState = AuthScope.of(context);
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      setState(() {
-        _errorMessage = 'Identifiant et mot de passe requis.';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final session = await authState.login(
-        email: email,
-        password: password,
-        role: AuthRoles.fromDisplay(_selectedRole),
-      );
-      if (!mounted) {
-        return;
-      }
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => _homeForRole(session.user.role)),
-      );
-    } on AuthException catch (error) {
-      setState(() {
-        _errorMessage = error.message;
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
   Widget _buildRoleOption(String role, IconData icon, bool isSelected) {
     return Expanded(
       child: GestureDetector(
@@ -1273,6 +1229,49 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _submitLogin() async {
+    final authState = AuthScope.of(context);
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        _errorMessage = 'Identifiant et mot de passe requis.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final session = await authState.login(
+        email: email,
+        password: password,
+        role: AuthRoles.fromDisplay(_selectedRole),
+      );
+      if (!mounted) {
+        return;
+      }
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => _homeForRole(session.user.role)),
+      );
+    } on AuthException catch (error) {
+      setState(() {
+        _errorMessage = error.message;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Widget _buildRoleOption(String role, IconData icon, bool isSelected) {

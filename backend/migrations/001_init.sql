@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS batches (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   type TEXT NOT NULL,
-  weight TEXT NOT NULL,
+  weight REAL NOT NULL,
   origin TEXT NOT NULL,
   producer TEXT NOT NULL,
   created_at TEXT NOT NULL,
