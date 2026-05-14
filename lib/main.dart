@@ -7,9 +7,43 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show File;
 import 'dart:typed_data';
 import 'services/web3_service.dart';
+import 'services/firebase_backend.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FirebaseBackend.initialize();
   runApp(const MyApp());
+}
+
+void navigateToRoleHome(BuildContext context, String? role) {
+  Widget screen;
+  switch (role) {
+    case "Coopérative":
+      screen = const CooperativeMainScreen();
+      break;
+    case "Exportateur":
+      screen = const ExporterMainScreen();
+      break;
+    case "Agriculteur":
+    default:
+      screen = const MainScreen();
+      break;
+  }
+
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (_) => screen),
+  );
+}
+
+Future<void> signOutAndReturnToStart(BuildContext context) async {
+  await AuthService().logout();
+  if (!context.mounted) return;
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+    (route) => false,
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -547,8 +581,50 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
+  final AuthService _authService = AuthService();
+  final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isSubmitting = false;
   String _selectedRole = "Agriculteur"; // Default role
+
+  @override
+  void dispose() {
+    _lastNameController.dispose();
+    _firstNameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _register() async {
+    setState(() => _isSubmitting = true);
+    try {
+      final error = await _authService.register(
+        firstName: _firstNameController.text,
+        lastName: _lastNameController.text,
+        email: _emailController.text,
+        password: _passwordController.text,
+        role: _selectedRole,
+      );
+
+      if (!mounted) return;
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+        return;
+      }
+
+      navigateToRoleHome(context, _selectedRole);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Inscription impossible : $error")));
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -623,24 +699,28 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           label: 'Nom',
                           hint: 'Doe',
                           icon: Icons.person_outline,
+                          controller: _lastNameController,
                         ),
                         const SizedBox(height: 20),
                         _buildInputField(
                           label: 'Prénom',
                           hint: 'John',
+                          controller: _firstNameController,
                         ),
                         const SizedBox(height: 20),
                         _buildInputField(
-                          label: 'Numéro de téléphone',
-                          hint: '+33 6 12 34 56 78',
-                          icon: Icons.phone_outlined,
-                          keyboardType: TextInputType.phone,
+                          label: 'Email',
+                          hint: 'john@cacao.tg',
+                          icon: Icons.email_outlined,
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
                         ),
                         const SizedBox(height: 20),
                         _buildInputField(
                           label: 'Mot de passe',
                           hint: '••••••••',
                           icon: Icons.lock_outline,
+                          controller: _passwordController,
                           isPassword: true,
                         ),
                         
@@ -666,24 +746,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         
                         // Submit Button
                         ElevatedButton(
-                          onPressed: () {
-                            if (_selectedRole == "Agriculteur") {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (_) => const MainScreen()),
-                              );
-                            } else if (_selectedRole == "Coopérative") {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (_) => const CooperativeMainScreen()),
-                              );
-                            } else {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (_) => const ExporterMainScreen()),
-                              );
-                            }
-                          },
+                          onPressed: _isSubmitting ? null : _register,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFC67A3F),
                             foregroundColor: Colors.white,
@@ -692,7 +755,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text("S'inscrire", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          child: Text(
+                            _isSubmitting ? "Création du compte..." : "S'inscrire",
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ],
                     ),
@@ -733,6 +799,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     required String label,
     required String hint,
     IconData? icon,
+    TextEditingController? controller,
     bool isPassword = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
@@ -755,6 +822,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: TextField(
+            controller: controller,
             obscureText: isPassword && _obscurePassword,
             keyboardType: keyboardType,
             style: const TextStyle(color: Colors.white),
@@ -834,9 +902,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final AuthService _authService = AuthService();
   final TextEditingController _emailController = TextEditingController(text: "kouassi@cacao.tg");
   final TextEditingController _passController = TextEditingController(text: "password123");
   bool _obscurePassword = true;
+  bool _isSubmitting = false;
   String _selectedRole = "Agriculteur";
 
   @override
@@ -844,6 +914,31 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passController.dispose();
     super.dispose();
+  }
+
+  Future<void> _login() async {
+    setState(() => _isSubmitting = true);
+    try {
+      final error = await _authService.login(
+        email: _emailController.text,
+        password: _passController.text,
+      );
+
+      if (!mounted) return;
+      if (error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+        return;
+      }
+
+      final role = await _authService.currentUserRole(fallback: _selectedRole);
+      if (mounted) navigateToRoleHome(context, role);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Connexion impossible : $error")));
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override
@@ -914,13 +1009,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 // Form Fields
                 _buildInputField(
-                  label: 'IDENTIFIANT',
-                  hint: "Email ou Nom d'utilisateur",
+                  label: 'EMAIL',
+                  hint: "Votre adresse email",
+                  controller: _emailController,
                 ),
                 const SizedBox(height: 20),
                 _buildInputField(
                   label: 'MOT DE PASSE',
                   hint: '••••••••',
+                  controller: _passController,
                   isPassword: true,
                 ),
                 
@@ -963,25 +1060,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 // Login Button
                 ElevatedButton(
-                  onPressed: () {
-                    // Navigate to Farmer Dashboard
-                    if (_selectedRole == "Agriculteur") {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const MainScreen()),
-                      );
-                    } else if (_selectedRole == "Coopérative") {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const CooperativeMainScreen()),
-                      );
-                    } else {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const ExporterMainScreen()),
-                      );
-                    }
-                  },
+                  onPressed: _isSubmitting ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFC67A3F),
                     foregroundColor: Colors.white,
@@ -990,12 +1069,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(28), // Pill shape
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Se connecter', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                      Text(
+                        _isSubmitting ? 'Connexion...' : 'Se connecter',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
                     ],
                   ),
                 ),
@@ -1068,6 +1150,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildInputField({
     required String label,
     required String hint,
+    TextEditingController? controller,
     bool isPassword = false,
   }) {
     return Column(
@@ -1090,6 +1173,7 @@ class _LoginScreenState extends State<LoginScreen> {
             border: Border.all(color: Colors.white10),
           ),
           child: TextField(
+            controller: controller,
             obscureText: isPassword && _obscurePassword,
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
@@ -2329,10 +2413,27 @@ class BatchHistoryScreen extends StatefulWidget {
 
 class _BatchHistoryScreenState extends State<BatchHistoryScreen> {
   final Web3Service _web3Service = Web3Service();
+  final BatchRepository _batchRepository = BatchRepository();
 
   @override
   Widget build(BuildContext context) {
-    final history = _web3Service.history;
+    if (FirebaseBackend.isReady) {
+      return StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _batchRepository.watchPublishedBatches(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: Color(0xFFC67A3F)));
+          }
+
+          return _buildHistoryList(snapshot.data ?? []);
+        },
+      );
+    }
+
+    return _buildHistoryList(_web3Service.history);
+  }
+
+  Widget _buildHistoryList(List<Map<String, dynamic>> history) {
     return history.isEmpty
         ? Center(
             child: Column(
@@ -2437,6 +2538,163 @@ class _BatchHistoryScreenState extends State<BatchHistoryScreen> {
   }
 }
 
+class _ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _ProfileAppBar();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Color(0xFFC67A3F)),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: const Text('Profil', style: TextStyle(color: Color(0xFFC67A3F), fontWeight: FontWeight.bold)),
+      centerTitle: true,
+    );
+  }
+}
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final authService = AuthService();
+
+    return StreamBuilder<Map<String, dynamic>?>(
+      stream: authService.watchCurrentUserProfile(),
+      builder: (context, snapshot) {
+        final profile = snapshot.data;
+        final name = (profile?['name'] as String?)?.trim();
+        final firstName = (profile?['firstName'] as String?)?.trim();
+        final lastName = (profile?['lastName'] as String?)?.trim();
+        final displayName = name?.isNotEmpty == true
+            ? name!
+            : [firstName, lastName].whereType<String>().where((value) => value.isNotEmpty).join(' ');
+        final email = profile?['email'] as String? ?? profile?['authEmail'] as String? ?? authService.currentUser?.email ?? 'Email indisponible';
+        final role = profile?['role'] as String? ?? 'Rôle non défini';
+        final uid = profile?['uid'] as String? ?? authService.currentUser?.uid ?? '-';
+
+        if (!FirebaseBackend.isReady) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                "Firebase n'est pas encore configuré.",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white54),
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: Color(0xFFC67A3F)));
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 92,
+                      height: 92,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFC67A3F),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: const Icon(Icons.person, color: Colors.white, size: 48),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      displayName.isNotEmpty ? displayName : 'Utilisateur Chain Cacao',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      role,
+                      style: const TextStyle(color: Color(0xFFC67A3F), fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              _ProfileInfoTile(icon: Icons.email_outlined, label: 'Email', value: email),
+              _ProfileInfoTile(icon: Icons.badge_outlined, label: 'Identifiant utilisateur', value: uid),
+              _ProfileInfoTile(icon: Icons.verified_user_outlined, label: 'Statut', value: 'Compte authentifié'),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => signOutAndReturnToStart(context),
+                  icon: const Icon(Icons.logout, color: Color(0xFFE57373)),
+                  label: const Text('Se déconnecter', style: TextStyle(color: Color(0xFFE57373), fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFE57373)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ProfileInfoTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _ProfileInfoTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFFC67A3F), size: 22),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(value, style: const TextStyle(color: Colors.white, fontSize: 14)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ==========================================
 // 2. MAIN SCREEN AGRICULTEUR (Navigation)
 // ==========================================
@@ -2484,12 +2742,21 @@ class _MainScreenState extends State<MainScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundColor: const Color(0xFF1A1A1A),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: const Icon(Icons.person, color: Colors.white54),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const Scaffold(
+                  backgroundColor: Color(0xFF0A0A0A),
+                  appBar: _ProfileAppBar(),
+                  body: ProfileScreen(),
+                )));
+              },
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFF1A1A1A),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: const Icon(Icons.person, color: Colors.white54),
+                ),
               ),
             ),
           ),
@@ -2610,7 +2877,14 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 const SizedBox(height: 20),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const Scaffold(
+                      backgroundColor: Color(0xFF0A0A0A),
+                      appBar: _ProfileAppBar(),
+                      body: ProfileScreen(),
+                    )));
+                  },
                   child: const Row(
                     children: [
                       Text(
@@ -2652,13 +2926,7 @@ class _MainScreenState extends State<MainScreen> {
               border: Border(top: BorderSide(color: Colors.white10)),
             ),
             child: GestureDetector(
-              onTap: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-                  (route) => false,
-                );
-              },
+              onTap: () => signOutAndReturnToStart(context),
               child: const Row(
                 children: [
                   Icon(Icons.logout, color: Color(0xFFE57373), size: 24),
@@ -2758,7 +3026,7 @@ class _CooperativeMainScreenState extends State<CooperativeMainScreen> {
           const CooperativeDashboardScreen(),
           const CooperativeScanScreen(),
           const CooperativeInventoryScreen(),
-          const Center(child: Text('Profile Coopérative', style: TextStyle(color: Colors.white))),
+          const ProfileScreen(),
         ],
       ),
       bottomNavigationBar: Container(
@@ -2817,18 +3085,18 @@ class _CooperativeMainScreenState extends State<CooperativeMainScreen> {
           _buildDrawerItem(Icons.account_balance_wallet_outlined, 'Paiements & Factures'),
           _buildDrawerItem(Icons.settings_outlined, 'Configuration'),
           const Spacer(),
-          _buildDrawerItem(Icons.logout, 'Déconnexion', color: Colors.redAccent),
+          _buildDrawerItem(Icons.logout, 'Déconnexion', color: Colors.redAccent, onTap: () => signOutAndReturnToStart(context)),
           const SizedBox(height: 40),
         ],
       ),
     );
   }
 
-  Widget _buildDrawerItem(IconData icon, String title, {Color? color}) {
+  Widget _buildDrawerItem(IconData icon, String title, {Color? color, VoidCallback? onTap}) {
     return ListTile(
       leading: Icon(icon, color: color ?? Colors.white70),
       title: Text(title, style: TextStyle(color: color ?? Colors.white70)),
-      onTap: () {},
+        onTap: onTap ?? () {},
     );
   }
 
@@ -4185,7 +4453,7 @@ class _ExporterMainScreenState extends State<ExporterMainScreen> {
               children: [
                 const ExporterScanScreen(),
                 ExporterDashboardScreen(onValidate: () => setState(() => _isSuccess = true)),
-                const Center(child: Text('Profil Exportateur', style: TextStyle(color: Colors.white))),
+                const ProfileScreen(),
               ],
             ),
       bottomNavigationBar: Container(
@@ -4248,7 +4516,7 @@ class _ExporterMainScreenState extends State<ExporterMainScreen> {
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.redAccent),
             title: const Text('Déconnexion', style: TextStyle(color: Colors.white)),
-            onTap: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const OnboardingScreen())),
+            onTap: () => signOutAndReturnToStart(context),
           ),
         ],
       ),
