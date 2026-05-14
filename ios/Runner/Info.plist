@@ -47,5 +47,10 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Cette application utilise la caméra pour scanner des QR codes.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>

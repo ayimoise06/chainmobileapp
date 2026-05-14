@@ -1,16 +1,33 @@
 # chain
 
-A new Flutter project.
+## Backend (auth + base de données)
 
-## Getting Started
+Le backend est un service Node.js avec SQLite pour l'authentification et la gestion des lots.
 
-This project is a starting point for a Flutter application.
+1. Démarrage rapide
+   ```bash
+   cd backend
+   cp .env.example .env
+   npm install
+   npm run start
+   ```
+2. Variables d'environnement
+   - `PORT` : port HTTP (par défaut 4000)
+   - `JWT_SECRET` : secret de signature des tokens
+   - `DB_PATH` : chemin du fichier SQLite (par défaut `./data/chain.db`)
 
-A few resources to get you started if this is your first Flutter project:
+## Flutter (API + session)
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+L'app appelle l'API via `API_BASE_URL` et stocke le token dans le stockage sécurisé.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Exemple (Android emulator) :
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:4000
+```
+
+Exemple (iOS simulateur / web) :
+```bash
+flutter run --dart-define=API_BASE_URL=http://localhost:4000
+```
+
+> En production, utilisez HTTPS et un domaine stable.
