@@ -28,12 +28,12 @@ router.post('/', apiLimiter, requireAuth, async (req, res) => {
   const { id, type, weight, origin, producer } = req.body;
 
   if (!type || !weight || !origin || !producer) {
-    return res.status(400).json({ message: 'Missing batch details.' });
+    return res.status(400).json({ message: 'Informations du lot manquantes.' });
   }
 
   const weightValue = Number(weight);
   if (!Number.isFinite(weightValue) || weightValue <= 0) {
-    return res.status(400).json({ message: 'Weight must be a positive number.' });
+    return res.status(400).json({ message: 'Le poids doit être un nombre positif.' });
   }
 
   const batchId = id || `LOT-${randomUUID().slice(0, 8).toUpperCase()}`;

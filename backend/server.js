@@ -27,12 +27,12 @@ app.use('/auth', authRoutes);
 app.use('/batches', batchRoutes);
 
 app.use((req, res) => {
-  res.status(404).json({ message: 'Not found.' });
+  res.status(404).json({ message: 'Introuvable.' });
 });
 
 app.use((err, _req, res, _next) => {
   console.error(err);
-  res.status(500).json({ message: 'Server error.' });
+  res.status(500).json({ message: 'Erreur serveur.' });
 });
 
 app.listen(port, () => {

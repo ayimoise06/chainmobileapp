@@ -5,7 +5,7 @@ const requireAuth = (req, res, next) => {
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
   if (!token) {
-    return res.status(401).json({ message: 'Missing auth token.' });
+    return res.status(401).json({ message: "Jeton d'authentification manquant." });
   }
 
   try {
@@ -14,7 +14,7 @@ const requireAuth = (req, res, next) => {
     return next();
   } catch (error) {
     console.warn('Auth token verification failed.', error.message);
-    return res.status(401).json({ message: 'Invalid or expired token.' });
+    return res.status(401).json({ message: 'Jeton invalide ou expiré.' });
   }
 };
 
