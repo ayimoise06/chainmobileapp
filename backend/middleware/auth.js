@@ -13,7 +13,7 @@ const requireAuth = (req, res, next) => {
     req.user = payload;
     return next();
   } catch (error) {
-    console.warn('Auth token verification failed.', error.message);
+    console.warn('Auth token verification failed.');
     return res.status(401).json({ message: 'Jeton invalide ou expiré.' });
   }
 };

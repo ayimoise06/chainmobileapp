@@ -31,7 +31,19 @@ router.post('/', apiLimiter, requireAuth, async (req, res) => {
     return res.status(400).json({ message: 'Informations du lot manquantes.' });
   }
 
-  const weightValue = Number(weight);
+  let weightValue;
+  if (typeof weight === 'number') {
+    weightValue = weight;
+  } else if (typeof weight === 'string') {
+    const trimmed = weight.trim();
+    if (!/^\d+(\.\d+)?$/.test(trimmed)) {
+      return res.status(400).json({ message: 'Le poids doit être un nombre positif.' });
+    }
+    weightValue = Number(trimmed);
+  } else {
+    return res.status(400).json({ message: 'Le poids doit être un nombre positif.' });
+  }
+
   if (!Number.isFinite(weightValue) || weightValue <= 0) {
     return res.status(400).json({ message: 'Le poids doit être un nombre positif.' });
   }

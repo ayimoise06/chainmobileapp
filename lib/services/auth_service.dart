@@ -40,7 +40,7 @@ class AuthService {
       await _storage.write(key: _tokenKey, value: session.token);
       return session;
     } on ApiException catch (error) {
-      throw AuthException(error.message, sessionExpired: error.statusCode == 401);
+      throw AuthException(error.message);
     }
   }
 
@@ -65,7 +65,7 @@ class AuthService {
       await _storage.write(key: _tokenKey, value: session.token);
       return session;
     } on ApiException catch (error) {
-      throw AuthException(error.message, sessionExpired: error.statusCode == 401);
+      throw AuthException(error.message);
     }
   }
 

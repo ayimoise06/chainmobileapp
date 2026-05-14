@@ -110,7 +110,7 @@ router.post('/login', authLimiter, async (req, res) => {
   }
 
   const normalizedRole = normalizeRole(role);
-  if (role && normalizedRole !== user.role) {
+  if (normalizedRole !== user.role) {
     return res.status(403).json({ message: 'Rôle invalide pour ce compte.' });
   }
 
