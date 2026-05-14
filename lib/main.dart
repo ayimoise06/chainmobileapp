@@ -992,7 +992,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   Future<void> _submitLogin() async {
     final authState = AuthScope.of(context);
     final email = _emailController.text.trim();
-    final password = _passController.text;
+    final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
       setState(() {
@@ -1080,7 +1080,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
   String _selectedRole = "Agriculteur";
   bool _isLoading = false;
@@ -1089,7 +1089,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void dispose() {
     _emailController.dispose();
-    _passController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -1170,7 +1170,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   label: 'MOT DE PASSE',
                   hint: '••••••••',
                   isPassword: true,
-                  controller: _passController,
+                  controller: _passwordController,
                 ),
                 if (_errorMessage != null) ...[
                   const SizedBox(height: 16),

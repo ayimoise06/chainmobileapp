@@ -2,10 +2,11 @@ const express = require('express');
 const { randomUUID } = require('crypto');
 const { getDb } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { apiLimiter } = require('../middleware/rate_limit');
 
 const router = express.Router();
 
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', apiLimiter, requireAuth, async (req, res) => {
   const db = await getDb();
   const batches = await db.all(
     'SELECT * FROM batches WHERE user_id = ? ORDER BY created_at DESC',
@@ -23,7 +24,7 @@ router.get('/', requireAuth, async (req, res) => {
   });
 });
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', apiLimiter, requireAuth, async (req, res) => {
   const { id, type, weight, origin, producer } = req.body;
 
   if (!type || !weight || !origin || !producer) {

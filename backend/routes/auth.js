@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { randomUUID } = require('crypto');
 const { getDb } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { authLimiter, apiLimiter } = require('../middleware/rate_limit');
 
 const router = express.Router();
 
@@ -42,7 +43,7 @@ const sanitizeUser = (user) => ({
   createdAt: user.created_at,
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   const { email, password, firstName, lastName, phone, role } = req.body;
 
   if (!email || !password) {
@@ -85,7 +86,7 @@ router.post('/register', async (req, res) => {
   return res.status(201).json({ token, user: sanitizeUser(user) });
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   const { email, password, role } = req.body;
 
   if (!email || !password) {
@@ -106,14 +107,16 @@ router.post('/login', async (req, res) => {
 
   const normalizedRole = normalizeRole(role);
   if (role && normalizedRole !== user.role) {
-    return res.status(403).json({ message: 'Role mismatch.' });
+    return res.status(403).json({
+      message: `Rôle invalide pour ce compte. Rôle attendu : ${user.role}.`,
+    });
   }
 
   const token = signToken(user);
   return res.json({ token, user: sanitizeUser(user) });
 });
 
-router.get('/me', requireAuth, async (req, res) => {
+router.get('/me', apiLimiter, requireAuth, async (req, res) => {
   const db = await getDb();
   const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.sub]);
 

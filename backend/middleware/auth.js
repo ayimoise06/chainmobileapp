@@ -13,6 +13,7 @@ const requireAuth = (req, res, next) => {
     req.user = payload;
     return next();
   } catch (error) {
+    console.warn('Auth token verification failed.', error.message);
     return res.status(401).json({ message: 'Invalid or expired token.' });
   }
 };
