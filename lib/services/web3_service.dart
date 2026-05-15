@@ -3,13 +3,13 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:web3dart/web3dart.dart';
-import 'package:wallet/wallet.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'firebase_backend.dart';
 
 class Web3Service {
   static const String _rpcUrl = String.fromEnvironment('RPC_URL');
   static const String _contractAddress = String.fromEnvironment('CONTRACT_ADDRESS');
-  static const String _privateKey = String.fromEnvironment('PRIVATE_KEY');
+  // LA CLÉ PRIVÉE EST SUPPRIMÉE D'ICI POUR DES RAISONS DE SÉCURITÉ
   static const int _chainId = int.fromEnvironment('CHAIN_ID', defaultValue: 11155111);
 
   // Static list to persist history during the session
@@ -19,7 +19,7 @@ class Web3Service {
 
   List<Map<String, dynamic>> get history => List.unmodifiable(_publishedBatches);
   bool get isRealBlockchainEnabled =>
-      _rpcUrl.isNotEmpty && _contractAddress.isNotEmpty && _privateKey.isNotEmpty;
+      _rpcUrl.isNotEmpty && _contractAddress.isNotEmpty;
 
   String generateBatchHash(Map<String, dynamic> data) {
     final String content = jsonEncode(data);
@@ -71,35 +71,24 @@ class Web3Service {
   }
 
   Future<String> _publishToRealBlockchain(Map<String, dynamic> batchData, String batchHash) async {
-    final client = Web3Client(_rpcUrl, http.Client());
-
     try {
-      final abiJson = await rootBundle.loadString('assets/contracts/cocoa_traceability_abi.json');
-      final contract = DeployedContract(
-        ContractAbi.fromJson(abiJson, 'CocoaTraceability'),
-        EthereumAddress.fromHex(_contractAddress),
-      );
-      final credentials = EthPrivateKey.fromHex(_privateKey);
-      final function = contract.function('publishBatch');
+      // ✅ APPEL AU BACKEND SÉCURISÉ (Firebase Cloud Functions)
+      // C'est le serveur privé qui détient la clé et qui va intéragir avec Web3
+      final HttpsCallable callable = FirebaseFunctions.instance.httpsCallable('publishBatchToBlockchain');
+      
+      final response = await callable.call(<String, dynamic>{
+        'batchId': batchData['id'] as String? ?? '',
+        'batchHash': batchHash,
+        'producer': batchData['producer'] as String? ?? '',
+        'origin': batchData['origin'] as String? ?? '',
+        'type': batchData['type'] as String? ?? '',
+        'weight': batchData['weight'] as String? ?? '',
+      });
 
-      return client.sendTransaction(
-        credentials,
-        Transaction.callContract(
-          contract: contract,
-          function: function,
-          parameters: [
-            batchData['id'] as String? ?? '',
-            batchHash,
-            batchData['producer'] as String? ?? '',
-            batchData['origin'] as String? ?? '',
-            batchData['type'] as String? ?? '',
-            batchData['weight'] as String? ?? '',
-          ],
-        ),
-        chainId: _chainId,
-      );
-    } finally {
-      client.dispose();
+      return response.data['txHash'] as String;
+    } catch (e) {
+      print('Erreur lors de la publication sur le backend: $e');
+      throw Exception('Echec de la transaction sécurisée');
     }
   }
 
