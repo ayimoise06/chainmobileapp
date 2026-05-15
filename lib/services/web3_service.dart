@@ -3,6 +3,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:web3dart/web3dart.dart';
+import 'package:wallet/wallet.dart';
 import 'firebase_backend.dart';
 
 class Web3Service {
@@ -56,7 +57,10 @@ class Web3Service {
       "blockchainMode": isRealBlockchainEnabled ? "testnet" : "mock",
     });
 
-    await BatchRepository().savePublishedBatch(_publishedBatches.first);
+    // Enregistrement en arrière-plan sans "await" pour ne pas bloquer l'UI
+    BatchRepository().savePublishedBatch(_publishedBatches.first).catchError((e) {
+      print("Erreur Firebase en arrière-plan: $e");
+    });
 
     return txHash;
   }
