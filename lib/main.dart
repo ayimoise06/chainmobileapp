@@ -8,9 +8,11 @@ import 'dart:io' show File;
 import 'dart:typed_data';
 import 'services/web3_service.dart';
 import 'services/firebase_backend.dart';
+import 'services/preferences_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await PreferencesService.init(); // Initialiser le stockage local
   await FirebaseBackend.initialize();
   runApp(const MyApp());
 }
@@ -5166,8 +5168,25 @@ class ExporterSuccessScreen extends StatelessWidget {
 // ==========================================
 // ECRAN DES PARAMÈTRES
 // ==========================================
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  late bool isDarkMode;
+  late bool isNotificationsEnabled;
+  late bool isBiometricsEnabled;
+
+  @override
+  void initState() {
+    super.initState();
+    isDarkMode = PreferencesService.isDarkMode;
+    isNotificationsEnabled = PreferencesService.isNotificationsEnabled;
+    isBiometricsEnabled = PreferencesService.isBiometricsEnabled;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -5196,37 +5215,34 @@ class SettingsScreen extends StatelessWidget {
             subtitle: 'Connecté sur Ethereum (Sepolia)',
             trailing: const Icon(Icons.check_circle, color: Colors.green, size: 20),
           ),
-          _buildSettingsTile(
-            icon: Icons.account_balance_wallet_outlined,
-            title: 'Configuration Portefeuille',
-            subtitle: 'Gérer les clés privées et adresses',
-          ),
           
           const SizedBox(height: 24),
           _buildSectionHeader('Préférences de l\'Application'),
           _buildSettingsTile(
-            icon: Icons.language,
-            title: 'Langue',
-            subtitle: 'Français',
+            icon: Icons.dark_mode_outlined,
+            title: 'Thème Sombre',
+            subtitle: 'Basculer le thème de l\'application',
+            trailing: Switch(
+              value: isDarkMode,
+              activeColor: const Color(0xFFC67A3F),
+              onChanged: (val) {
+                setState(() => isDarkMode = val);
+                PreferencesService.setDarkMode(val);
+                // Si on gérait ThemeMode, on mettrait à jour le Provider ici
+              },
+            ),
           ),
           _buildSettingsTile(
             icon: Icons.notifications_none_outlined,
             title: 'Notifications',
             subtitle: 'Alertes lors de la validation des lots',
             trailing: Switch(
-              value: true,
+              value: isNotificationsEnabled,
               activeColor: const Color(0xFFC67A3F),
-              onChanged: (val) {},
-            ),
-          ),
-          _buildSettingsTile(
-            icon: Icons.dark_mode_outlined,
-            title: 'Thème Sombre',
-            subtitle: 'Toujours activé pour préserver la batterie',
-            trailing: Switch(
-              value: true,
-              activeColor: const Color(0xFFC67A3F),
-              onChanged: (val) {},
+              onChanged: (val) {
+                setState(() => isNotificationsEnabled = val);
+                PreferencesService.setNotificationsEnabled(val);
+              },
             ),
           ),
           
@@ -5237,15 +5253,13 @@ class SettingsScreen extends StatelessWidget {
             title: 'Sécuriser avec Empreinte / FaceID',
             subtitle: 'Demander l\'authentification à l\'ouverture',
             trailing: Switch(
-              value: false,
+              value: isBiometricsEnabled,
               activeColor: const Color(0xFFC67A3F),
-              onChanged: (val) {},
+              onChanged: (val) {
+                setState(() => isBiometricsEnabled = val);
+                PreferencesService.setBiometricsEnabled(val);
+              },
             ),
-          ),
-          _buildSettingsTile(
-            icon: Icons.privacy_tip_outlined,
-            title: 'Politique de Confidentialité',
-            subtitle: 'Comment nous traitons vos données Firebase',
           ),
           _buildSettingsTile(
             icon: Icons.info_outline,
@@ -5307,7 +5321,6 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
         trailing: trailing ?? const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 16),
-        onTap: trailing is Switch ? null : () {},
       ),
     );
   }
